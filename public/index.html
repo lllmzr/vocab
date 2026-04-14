@@ -15,6 +15,7 @@
       <button class="tab active" data-tab="review">复习</button>
       <button class="tab" data-tab="words">单词库</button>
       <button class="tab" data-tab="stats">统计</button>
+      <button class="tab" data-tab="history">日历</button>
     </nav>
   </header>
 
@@ -36,6 +37,7 @@
         <div class="snum"><b id="sn-due">—</b><span>待复习</span></div>
         <div class="snum"><b id="sn-new">—</b><span>新单词</span></div>
         <div class="snum"><b id="sn-total">—</b><span>总词数</span></div>
+        <div class="snum hi"><b id="sn-today">—</b><span>今日已复习</span></div>
       </div>
       <button id="btn-start" class="btn-primary">开始复习</button>
       <p class="muted sm">每次最多 50 个新单词 + 全部到期词</p>
@@ -65,6 +67,7 @@
             <span id="rc-word"></span>
             <button id="btn-speak">🔊</button>
           </div>
+          <p id="rc-phonetic" class="hidden muted sm"></p>
           <p id="rc-trans"></p>
           <div id="rc-ex-wrap" class="hidden">
             <span class="ex-label">例句</span>
@@ -95,6 +98,7 @@
       <div class="big-icon">🎉</div>
       <h2>本次完成！</h2>
       <p id="done-summary" class="muted"></p>
+      <p id="done-today" class="muted sm"></p>
       <button id="btn-again" class="btn-primary">再来一轮</button>
     </div>
 
@@ -131,7 +135,13 @@
       <div class="stat-card"><b id="st-new">—</b><span>未学过</span></div>
       <div class="stat-card"><b id="st-acc">—</b><span>正确率</span></div>
       <div class="stat-card"><b id="st-streak">—</b><span>连续学习天</span></div>
+      <div class="stat-card hi"><b id="st-today">—</b><span>今日已复习</span></div>
     </div>
+  </section>
+
+  <!-- ══ 日历 ══ -->
+  <section id="tab-history" class="tab hidden">
+    <div id="history-list"></div>
   </section>
 
 </div>

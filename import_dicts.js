@@ -77,7 +77,8 @@ async function importDict({ name, set, url }) {
     .map(d => ({
       word:        d.name.trim(),
       translation: cleanTrans(d.trans || d.translation),
-      example:     ""
+      example:     (d.sentence && d.sentence[0]) ? (d.sentence[0].en || d.sentence[0] || "").trim() : "",
+      phonetic:    (d.usphone || d.ukphone || "").trim()
     }));
 
   const BATCH = 200;

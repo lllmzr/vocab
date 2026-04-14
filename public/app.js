@@ -1,5 +1,25 @@
 /* 单词背诵 — 纯前端，进度存 localStorage */
 
+/* ── Audio ───────────────────────────────────── */
+function playTone() {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const now  = ctx.currentTime;
+    const play = (freq, start, dur) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.22, now + start);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now + start); osc.stop(now + start + dur);
+    };
+    play(880, 0,    0.18);
+    play(660, 0.16, 0.22);
+  } catch {}
+}
+
 /* ── Utils ───────────────────────────────────── */
 const $    = id => document.getElementById(id);
 const show = id => $(id).classList.remove("hidden");
@@ -10,6 +30,7 @@ function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.rand
 
 const BASE_PROG_KEY = "voc_prog_v1";
 const STREAK_KEY    = "voc_streak_v1";
+const DAILY_KEY     = "voc_daily_v1";
 const DECK_KEY      = "voc_deck_v1";
 const NEW_LIMIT     = 50;
 
@@ -19,8 +40,23 @@ let currentDeck = localStorage.getItem(DECK_KEY) || "";
 
 /* ── Progress (per-deck) ─────────────────────── */
 const progKey  = () => `${BASE_PROG_KEY}_${currentDeck}`;
-const loadProg = () => { try { return JSON.parse(localStorage.getItem(progKey())||"{}"); } catch { return {}; } };
-const saveProg = () => localStorage.setItem(progKey(), JSON.stringify(progress));
+async function loadProg() {
+  const local = (() => { try { return JSON.parse(localStorage.getItem(progKey())||"{}"); } catch { return {}; } })();
+  try {
+    const server = await fetch(`/api/progress/${currentDeck}`).then(r => r.json());
+    const merged = { ...local, ...server };
+    localStorage.setItem(progKey(), JSON.stringify(merged));
+    return merged;
+  } catch { return local; }
+}
+function saveProg() {
+  localStorage.setItem(progKey(), JSON.stringify(progress));
+  fetch(`/api/progress/${currentDeck}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(progress)
+  }).catch(() => {});
+}
 const today    = () => new Date().toISOString().slice(0,10);
 
 function getCard(w) {
@@ -57,9 +93,31 @@ function bumpStreak() {
   if (s.last===t) return s.count;
   s = { last:t, count: s.last===yd ? s.count+1 : 1 };
   localStorage.setItem(STREAK_KEY, JSON.stringify(s));
+  fetch("/api/streak", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(s) }).catch(()=>{});
   return s.count;
 }
 function streak() { try { return JSON.parse(localStorage.getItem(STREAK_KEY)||'{"count":0}').count; } catch { return 0; } }
+
+/* ── Daily Count ──────────────────────────────── */
+function bumpDaily(word, choiceLabel) {
+  const t = today();
+  let d = (() => { try { return JSON.parse(localStorage.getItem(DAILY_KEY)||"{}"); } catch { return {}; } })();
+  if (typeof d[t] === 'number') d[t] = { count: d[t], words: [] }; // 迁移旧格式
+  if (!d[t]) d[t] = { count: 0, words: [] };
+  d[t].count++;
+  d[t].words.push({ word: word.word, trans: word.translation, phonetic: word.phonetic || "", example: word.example || "", choice: choiceLabel });
+  localStorage.setItem(DAILY_KEY, JSON.stringify(d));
+  fetch("/api/daily", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(d) }).catch(()=>{});
+  return d[t].count;
+}
+function todayCount() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DAILY_KEY)||"{}");
+    const v = d[today()];
+    if (!v) return 0;
+    return typeof v === 'number' ? v : (v.count || 0);
+  } catch { return 0; }
+}
 
 /* ── Deck ─────────────────────────────────────── */
 async function loadDecks() {
@@ -103,7 +161,7 @@ async function switchDeck(deckId) {
   try {
     words = await fetch(`/data/${deckId}.json`).then(r => r.json());
   } catch { words = []; }
-  progress = loadProg();
+  progress = await loadProg();
 
   showStart();
 
@@ -116,11 +174,17 @@ async function switchDeck(deckId) {
 document.querySelectorAll("nav button").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll("section.tab").forEach(s => s.classList.remove("active"));
+    document.querySelectorAll("section.tab").forEach(s => {
+      s.classList.remove("active");
+      s.classList.add("hidden");
+    });
     btn.classList.add("active");
-    document.getElementById("tab-"+btn.dataset.tab).classList.add("active");
-    if (btn.dataset.tab==="words") renderWords();
-    if (btn.dataset.tab==="stats") renderStats();
+    const tab = document.getElementById("tab-"+btn.dataset.tab);
+    tab.classList.add("active");
+    tab.classList.remove("hidden");
+    if (btn.dataset.tab==="words")   renderWords();
+    if (btn.dataset.tab==="stats")   renderStats();
+    if (btn.dataset.tab==="history") renderHistory();
   });
 });
 
@@ -137,6 +201,7 @@ function showStart() {
   $("sn-due").textContent   = rev.length;
   $("sn-new").textContent   = Math.min(nw.length, NEW_LIMIT);
   $("sn-total").textContent = words.length;
+  $("sn-today").textContent = todayCount();
   show("scr-start"); hide("scr-session"); hide("scr-done"); hide("scr-empty");
 }
 
@@ -151,6 +216,7 @@ $("btn-start").addEventListener("click", () => {
 /* Phase 1 */
 function showWord() {
   if (qi>=queue.length) { endSession(); return; }
+  playTone();
   const w = queue[qi];
   $("prog-bar").style.width = (qi/queue.length*100).toFixed(1)+"%";
   $("prog-label").textContent = `${qi+1} / ${queue.length}`;
@@ -167,11 +233,35 @@ function showReveal() {
   const w = queue[qi];
   hide("ph-word"); show("ph-reveal");
 
-  $("rc-word").textContent  = w.word;
+  $("rc-word").textContent = w.word;
+  if (w.phonetic && w.phonetic.trim()) {
+    $("rc-phonetic").textContent = "/" + w.phonetic.trim() + "/";
+    show("rc-phonetic");
+  } else {
+    hide("rc-phonetic");
+    // 从服务器按需获取音标和例句
+    fetch(`/api/word-detail/${encodeURIComponent(w.word)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.phonetic && queue[qi] && queue[qi].id === w.id) {
+          $("rc-phonetic").textContent = "/" + d.phonetic + "/";
+          show("rc-phonetic");
+        }
+        if (d.example && !w.example && queue[qi] && queue[qi].id === w.id) {
+          $("rc-ex").textContent = d.example;
+          show("rc-ex-wrap");
+          // 同步更新打字目标
+          if (!$("type-input").disabled) {
+            $("type-input").dataset.target = d.example;
+            $("type-prompt").textContent = "看着例句，打一遍：";
+          }
+        }
+      }).catch(() => {});
+  }
   $("rc-trans").textContent = w.translation;
 
   const hasEx = w.example && w.example.trim();
-  if (hasEx) { $("rc-ex").textContent=w.example; show("rc-ex-wrap"); }
+  if (hasEx) { $("rc-ex").textContent = w.example; show("rc-ex-wrap"); }
   else        { hide("rc-ex-wrap"); }
 
   const target = hasEx ? w.example : w.word;
@@ -199,6 +289,8 @@ function submitTyping() {
 
   if (ok) sesOk++;
   sesTotal++;
+  const choiceLabel = pendingQ === 5 ? "认识" : pendingQ === 3 ? "熟悉" : "不认识";
+  bumpDaily(queue[qi], choiceLabel);
 
   const q = Math.max(0, ok ? (pendingQ??3) : (pendingQ??3)-2);
   progress[queue[qi].id] = sm2(getCard(queue[qi]), q);
@@ -222,6 +314,7 @@ function endSession() {
   $("prog-bar").style.width="100%";
   const rate = sesTotal ? Math.round(sesOk/sesTotal*100) : 0;
   $("done-summary").textContent = `复习 ${sesTotal} 个，正确 ${sesOk} 个（${rate}%）`;
+  $("done-today").textContent = `今日累计：${todayCount()} 个单词`;
   bumpStreak();
 }
 $("btn-again").addEventListener("click", showStart);
@@ -279,7 +372,70 @@ function renderStats() {
   $("st-new").textContent      = nw;
   $("st-acc").textContent      = acc+"%";
   $("st-streak").textContent   = streak()+" 天";
+  $("st-today").textContent    = todayCount()+" 个";
+}
+
+/* ══════════════════════════════════════════════
+   HISTORY
+   ══════════════════════════════════════════════ */
+function renderHistory() {
+  const d = (() => { try { return JSON.parse(localStorage.getItem(DAILY_KEY)||"{}"); } catch { return {}; } })();
+  const dates = Object.keys(d).sort().reverse();
+  if (!dates.length) {
+    $("history-list").innerHTML = '<p class="muted sm" style="padding:24px 0">暂无复习记录</p>';
+    return;
+  }
+  const choiceClass = c => c === "认识" ? "ok" : c === "熟悉" ? "mid" : "bad";
+  $("history-list").innerHTML = dates.map(date => {
+    const val   = d[date];
+    const count = typeof val === 'number' ? val : (val.count || 0);
+    const words = (val && val.words) ? val.words : [];
+    return `<div class="hist-day">
+      <div class="hist-date">
+        <span>${date}</span>
+        <span class="pill">${count} 个单词</span>
+      </div>
+      ${words.length ? `<div class="hist-words">${words.map(w =>
+        `<div class="hist-word">
+          <div class="hw-left">
+            <div class="hw-top">
+              <span class="hw-word">${esc(w.word)}</span>
+              ${w.phonetic ? `<span class="hw-phonetic">${esc(w.phonetic)}</span>` : ""}
+            </div>
+            <span class="hw-trans">${esc(w.trans)}</span>
+            ${w.example ? `<span class="hw-example">${esc(w.example)}</span>` : ""}
+          </div>
+          <span class="pill ${choiceClass(w.choice)}">${esc(w.choice)}</span>
+        </div>`
+      ).join("")}</div>` : ""}
+    </div>`;
+  }).join("");
 }
 
 /* ── Init ────────────────────────────────────── */
-(async () => { await loadDecks(); })();
+async function loadStreakFromServer() {
+  try {
+    const s = await fetch("/api/streak").then(r => r.json());
+    const local = JSON.parse(localStorage.getItem(STREAK_KEY)||'{"last":"","count":0}');
+    if (s.last >= local.last || s.count > local.count)
+      localStorage.setItem(STREAK_KEY, JSON.stringify(s));
+  } catch {}
+}
+
+async function loadDailyFromServer() {
+  try {
+    const server = await fetch("/api/daily").then(r => r.json());
+    const local  = (() => { try { return JSON.parse(localStorage.getItem(DAILY_KEY)||"{}"); } catch { return {}; } })();
+    const merged = { ...local };
+    for (const [date, val] of Object.entries(server)) {
+      const serverCount = typeof val === 'number' ? val : (val.count || 0);
+      const localVal    = merged[date];
+      const localCount  = typeof localVal === 'number' ? localVal : (localVal?.count || 0);
+      if (serverCount >= localCount) merged[date] = val;
+    }
+    localStorage.setItem(DAILY_KEY, JSON.stringify(merged));
+    fetch("/api/daily", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(merged) }).catch(()=>{});
+  } catch {}
+}
+
+(async () => { await loadStreakFromServer(); await loadDailyFromServer(); await loadDecks(); })();

@@ -1,14 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Skill(update-config)",
-      "Bash(node server.js)",
-      "Bash(curl:*)",
-      "Bash(Read \"C:/Users/shi/AppData/Local/Temp/claude/D--codexproject-vocab/e93b8264-a492-45b4-8102-dd59eb2e99ca/tasks/bw7a5xawu.output\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/RealKai42/qwerty-learner/master/public/dicts/CET6_T.json\")",
+      "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\)\\); console.log\\(JSON.stringify\\(d[0],null,2\\)\\); console.log\\(JSON.stringify\\(d[10],null,2\\)\\);\")",
+      "Bash(node:*)",
       "Bash(netstat -ano)",
-      "Bash(node import_dicts.js)",
-      "Bash(tasklist:*)",
-      "Bash(taskkill //PID 19472 //F)"
-    ]
+      "Bash(awk '{print $5}')",
+      "Bash(xargs -I{} taskkill //PID {} //F)",
+      "Bash(curl:*)"
+    ],
+    "defaultMode": "bypassPermissions"
   }
 }
