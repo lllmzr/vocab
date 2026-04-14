@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>单词背诵</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <span class="logo">单词背诵</span>
+    <nav>
+      <button class="tab active" data-tab="review">复习</button>
+      <button class="tab" data-tab="words">单词库</button>
+      <button class="tab" data-tab="stats">统计</button>
+    </nav>
+  </header>
+
+  <!-- ══ 复习 ══ -->
+  <section id="tab-review" class="tab active">
+
+    <!-- 开始界面 -->
+    <div id="scr-start">
+
+      <!-- 词库选择 -->
+      <div class="deck-selector">
+        <p class="deck-sel-label muted sm">选择词库</p>
+        <div id="deck-pills" class="deck-pills">
+          <span class="muted sm">加载中…</span>
+        </div>
+      </div>
+
+      <div class="start-nums">
+        <div class="snum"><b id="sn-due">—</b><span>待复习</span></div>
+        <div class="snum"><b id="sn-new">—</b><span>新单词</span></div>
+        <div class="snum"><b id="sn-total">—</b><span>总词数</span></div>
+      </div>
+      <button id="btn-start" class="btn-primary">开始复习</button>
+      <p class="muted sm">每次最多 50 个新单词 + 全部到期词</p>
+    </div>
+
+    <!-- 复习中 -->
+    <div id="scr-session" class="hidden">
+      <div class="prog-wrap"><div id="prog-bar"></div></div>
+      <p id="prog-label" class="muted sm tr"></p>
+
+      <!-- 阶段一：看单词，选认识程度 -->
+      <div id="ph-word">
+        <div class="word-card">
+          <div id="wc-word"></div>
+        </div>
+        <div class="know-row">
+          <button class="know good" data-q="5"><span>✓</span>认识</button>
+          <button class="know mid"  data-q="3"><span>～</span>熟悉</button>
+          <button class="know bad"  data-q="1"><span>✗</span>不认识</button>
+        </div>
+      </div>
+
+      <!-- 阶段二：展示释义/例句 + 打字 -->
+      <div id="ph-reveal" class="hidden">
+        <div class="reveal-card">
+          <div class="rc-head">
+            <span id="rc-word"></span>
+            <button id="btn-speak">🔊</button>
+          </div>
+          <p id="rc-trans"></p>
+          <div id="rc-ex-wrap" class="hidden">
+            <span class="ex-label">例句</span>
+            <p id="rc-ex"></p>
+          </div>
+        </div>
+
+        <div class="type-area">
+          <p id="type-prompt" class="muted sm"></p>
+          <div class="type-row">
+            <input id="type-input" type="text"
+              autocomplete="off" autocorrect="off" spellcheck="false"
+              placeholder="输入后按回车…" />
+            <button id="type-submit">确认 ↵</button>
+          </div>
+          <div id="type-fb" class="hidden">
+            <p id="type-result"></p>
+            <p id="type-correct" class="muted sm"></p>
+          </div>
+        </div>
+
+        <button id="btn-next" class="btn-primary hidden">下一个 →</button>
+      </div>
+    </div>
+
+    <!-- 完成 -->
+    <div id="scr-done" class="hidden center-block">
+      <div class="big-icon">🎉</div>
+      <h2>本次完成！</h2>
+      <p id="done-summary" class="muted"></p>
+      <button id="btn-again" class="btn-primary">再来一轮</button>
+    </div>
+
+    <!-- 今日无词 -->
+    <div id="scr-empty" class="hidden center-block">
+      <div class="big-icon">✅</div>
+      <h2>今日已全部复习</h2>
+      <p class="muted">明天再来，或去单词库浏览。</p>
+    </div>
+
+  </section>
+
+  <!-- ══ 单词库 ══ -->
+  <section id="tab-words" class="tab hidden">
+    <div class="toolbar">
+      <input id="words-search" type="text" placeholder="搜索单词或释义…" />
+      <select id="words-filter">
+        <option value="all">全部</option>
+        <option value="due">今日待复习</option>
+        <option value="new">未学过</option>
+        <option value="mastered">已掌握</option>
+      </select>
+    </div>
+    <p id="words-count" class="muted sm"></p>
+    <div id="words-list"></div>
+  </section>
+
+  <!-- ══ 统计 ══ -->
+  <section id="tab-stats" class="tab hidden">
+    <div class="stat-grid">
+      <div class="stat-card"><b id="st-total">—</b><span>单词总数</span></div>
+      <div class="stat-card hi"><b id="st-due">—</b><span>今日待复习</span></div>
+      <div class="stat-card"><b id="st-mastered">—</b><span>已掌握</span></div>
+      <div class="stat-card"><b id="st-new">—</b><span>未学过</span></div>
+      <div class="stat-card"><b id="st-acc">—</b><span>正确率</span></div>
+      <div class="stat-card"><b id="st-streak">—</b><span>连续学习天</span></div>
+    </div>
+  </section>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

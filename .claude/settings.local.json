@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(update-config)",
+      "Bash(node server.js)",
+      "Bash(curl:*)",
+      "Bash(Read \"C:/Users/shi/AppData/Local/Temp/claude/D--codexproject-vocab/e93b8264-a492-45b4-8102-dd59eb2e99ca/tasks/bw7a5xawu.output\")",
+      "Bash(netstat -ano)",
+      "Bash(node import_dicts.js)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill //PID 19472 //F)"
+    ]
+  }
+}
